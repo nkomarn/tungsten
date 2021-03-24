@@ -3,11 +3,10 @@ package com.firestartermc.tungsten.island;
 import com.feed_the_beast.ftblib.lib.data.ForgeTeam;
 import com.firestartermc.tungsten.Tungsten;
 import com.firestartermc.tungsten.data.SqlStatements;
+import com.firestartermc.tungsten.team.Team;
 import com.firestartermc.tungsten.util.ConcurrentUtils;
 import com.firestartermc.tungsten.util.Region;
-import net.minecraft.world.chunk.storage.RegionFile;
 import org.jetbrains.annotations.NotNull;
-import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
@@ -24,9 +23,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.firestartermc.tungsten.team.TeamManager.getTeam;
-import static com.firestartermc.tungsten.team.TeamManager.hasTeam;
-
 /**
  * Represents the collection of {@link Region}s in a {@link World} which
  * make up the skyblock world.
@@ -36,86 +32,44 @@ import static com.firestartermc.tungsten.team.TeamManager.hasTeam;
 public class IslandGrid {
 
     private final Tungsten plugin;
-    private final World world;
-    private final Map<Short, Island> islands;
-    private final Map<RegionFile, Island> islandRegions;
+    private final Map<Team, Island> islands;
+    private final Map<Region, Island> islandRegions;
 
     public IslandGrid(@NotNull Tungsten plugin) {
         this.plugin = plugin;
-        this.world = Sponge.getServer().getWorld(Sponge.getServer().getDefaultWorldName()).get();
         this.islands = new ConcurrentHashMap<>();
         this.islandRegions = new ConcurrentHashMap<>();
     }
 
     /**
-     * Returns the {@link World} within which this island grid is housed.
+     * Returns an island that may be owned by the given {@link Team}.
      *
-     * @return The world.
+     * @param team The team.
+     * @return Future of an optional of an island.
      */
     @NotNull
-    public World getWorld() {
-        return world;
-    }
-
-    /*
-    @NotNull
-    public CompletableFuture<Island> createIsland(@NotNull Player player) {
-        if (!hasTeam(player)) {
-            throw new CompletionException(new IllegalStateException("Player must be in a team to create an island."));
+    public CompletableFuture<Optional<Island>> getIslandByTeam(@NotNull Team team) {
+        if (islands.containsKey(team)) {
+            return CompletableFuture.completedFuture(Optional.ofNullable(islands.get(team)));
         }
 
-        // Remove existing tag in case we already have one so Botania doesn't teleport us back
-        // This uses NMS to remove tags, so it's quite hacky but it's fineeeeeeeeeee (:
-        player.toContainer().remove(DataQuery.of("Botania-HasOwnIsland"));
-        player.toContainer().remove(DataQuery.of("Botania-MadeIsland"));
-
-        // Run the Botania Garden of Glass spread command for this player to create a new island
-        Sponge.getCommandManager().process(Sponge.getServer().getConsole(), "botania-skyblock-spread " + player.getName() + " 50000");
-
-        // Once they're on the island, let's set their new island spawn and create the island object
-        ForgeTeam team = getTeam(player).get();
-        Location<World> location = player.getLocation();
-
-        System.out.println("inserting new island data");
         return ConcurrentUtils.callAsync(() -> {
             try (Connection connection = plugin.getDataStore().getConnection()) {
-                try (PreparedStatement statement = connection.prepareStatement(SqlStatements.CREATE_ISLAND)) {
-                    statement.setShort(1, team.getUID());
-                    statement.setInt(2, location.getBlockX());
-                    statement.setInt(3, location.getBlockY());
-                    statement.setInt(4, location.getBlockZ());
-                    statement.execute();
+                PreparedStatement statement = connection.prepareStatement(SqlStatements.SELECT_BY_ID);
+                statement.setShort(1, team.getId());
+                ResultSet result = statement.executeQuery();
+
+                if (result.next()) {
+                    Island island = Island.fromResultSet(result);
+                    islands.put(island.getTeam(), island);
+                    islandRegions.put(island.getRegion(), island);
+                    return Optional.of(island);
                 }
 
-                try (PreparedStatement statement = connection.prepareStatement(SqlStatements.SELECT_LAST_ID)) {
-                    try (ResultSet result = statement.executeQuery()) {
-                        result.next();
-                        return new Island(result.getInt(1), team, location);
-                    }
-                }
+                return Optional.empty();
             }
         });
     }
-     */
-
-    /*
-    @NotNull
-    public Optional<Island> getIsland(int uid) {
-        return Optional.ofNullable(islands.get(uid));
-    }
-
-    @NotNull
-    public Optional<Island> getIsland(@NotNull Player player) {
-        return getTeam(player)
-                .map(team -> islands.get(team.getUID()));
-
-    }
-
-    @NotNull
-    public Optional<Island> getIslandByTeam(@NotNull ForgeTeam team) {
-        return getIsland(team.getUID());
-    }
-     */
 
     /**
      * Returns an island that may be located at the given region.
@@ -124,7 +78,7 @@ public class IslandGrid {
      * @return Future of an optional of an island.
      */
     @NotNull
-    public CompletableFuture<Optional<Island>> getIslandByRegion(@NotNull RegionFile region) {
+    public CompletableFuture<Optional<Island>> getIslandByRegion(@NotNull Region region) {
         if (islandRegions.containsKey(region)) {
             return CompletableFuture.completedFuture(Optional.ofNullable(islandRegions.get(region)));
         }
@@ -132,11 +86,13 @@ public class IslandGrid {
         return ConcurrentUtils.callAsync(() -> {
             try (Connection connection = plugin.getDataStore().getConnection()) {
                 PreparedStatement statement = connection.prepareStatement(SqlStatements.SELECT_BY_REGION);
-                statement.setString(1, region.toString());
+                statement.setInt(1, region.getX());
+                statement.setInt(2, region.getZ());
                 ResultSet result = statement.executeQuery();
 
                 if (result.next()) {
                     Island island = Island.fromResultSet(result);
+                    islands.put(island.getTeam(), island);
                     islandRegions.put(region, island);
                     return Optional.of(island);
                 }
@@ -149,38 +105,18 @@ public class IslandGrid {
     @Listener
     public void onJoin(ClientConnectionEvent.Join event) {
         Player player = event.getTargetEntity();
+        Optional<Team> team = Team.ofPlayer(player);
 
-        if (!hasTeam(player)) {
+        if (!team.isPresent()) {
             return;
         }
 
-        // Check if this island is already loaded
-        Optional<ForgeTeam> team = getTeam(player);
-
-        if (team.flatMap(this::getIslandByTeam).isPresent()) {
+        if (!islands.containsKey(team.get())) {
             return;
         }
 
-        // Otherwise, load it into the grid
-        ConcurrentUtils.callAsync(() -> {
-            try (Connection connection = plugin.getDataStore().getConnection()) {
-                try (PreparedStatement statement = connection.prepareStatement(SqlStatements.SELECT_ISLAND)) {
-                    statement.setShort(1, team.get().getUID());
-
-                    try (ResultSet result = statement.executeQuery()) {
-                        while (result.next()) {
-                            int islandId = result.getInt(1);
-                            Location<World> location = getWorld().getLocation(
-                                    result.getInt(3),
-                                    result.getInt(4),
-                                    result.getInt(5)
-                            );
-
-                            islands.putIfAbsent(team.get().getUID(), new Island(islandId, team.get(), location));
-                        }
-                    }
-                }
-            }
+        getIslandByTeam(team.get()).thenAccept(island -> {
+            player.sendMessage(Text.of(TextColors.GREEN, "Loaded your island."));
         }).exceptionally(e -> {
             e.printStackTrace();
             player.sendMessage(Text.of(TextColors.RED, "Failed to load your island; notify staff."));
@@ -190,6 +126,28 @@ public class IslandGrid {
 
     @Listener
     public void onDisconnect(ClientConnectionEvent.Disconnect event) {
-        getTeam(event.getTargetEntity()).ifPresent(team -> islands.remove(team.getUID()));
+        // Check if the team has active players left; otherwise unload the island
+        Player player = event.getTargetEntity();
+        Optional<Team> team = Team.ofPlayer(player);
+
+        if (!team.isPresent()) {
+            return;
+        }
+
+        if (!islands.containsKey(team.get())) {
+            return;
+        }
+
+        boolean isVacant = team.get()
+                .getMembers()
+                .noneMatch(Player::isOnline);
+
+        if (isVacant) {
+            Island island = islands.remove(team.get());
+            islandRegions.remove(island.getRegion());
+            System.out.println("Unloaded island of team '" + team.get().getName() + "'.");
+        }
     }
+
+    // TODO nuke island when team is disbanded completely since team ids might be reused
 }

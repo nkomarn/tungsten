@@ -3,6 +3,7 @@ package com.firestartermc.tungsten.island;
 import com.feed_the_beast.ftblib.lib.data.ForgeTeam;
 import com.feed_the_beast.ftblib.lib.data.Universe;
 import com.firestartermc.tungsten.Tungsten;
+import com.firestartermc.tungsten.team.Team;
 import com.firestartermc.tungsten.util.Region;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.api.world.Location;
@@ -13,13 +14,11 @@ import java.sql.SQLException;
 
 public class Island {
 
-    private final int id;
-    private final ForgeTeam team;
+    private final Team team;
     private final Region region;
     private final Location<World> spawnLocation;
 
-    public Island(int id, @NotNull ForgeTeam team, @NotNull Region region, @NotNull Location<World> spawnLocation) {
-        this.id = id;
+    public Island(@NotNull Team team, @NotNull Region region, @NotNull Location<World> spawnLocation) {
         this.team = team;
         this.region = region;
         this.spawnLocation = spawnLocation;
@@ -28,10 +27,9 @@ public class Island {
     @NotNull
     public static Island fromResultSet(@NotNull ResultSet result) throws SQLException {
         return new Island(
-                result.getInt(1),
-                Universe.get().getTeam(result.getShort(2)),
-                Region.fromString(result.getString(3)),
-                Tungsten.INSTANCE.getIslandGrid().getWorld().getLocation(
+                new Team(result.getShort(1)),
+                new Region(result.getInt(2), result.getInt(3)),
+                Tungsten.INSTANCE.getIslandWorld().getLocation(
                         result.getInt(4),
                         result.getInt(5),
                         result.getInt(6)
@@ -39,12 +37,8 @@ public class Island {
         );
     }
 
-    public int getId() {
-        return id;
-    }
-
     @NotNull
-    public ForgeTeam getTeam() {
+    public Team getTeam() {
         return team;
     }
 

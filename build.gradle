@@ -24,4 +24,5 @@ dependencies {
     compileOnly 'com.feedthebeast:FTB-Library:5.4.7.2'
     compileOnly 'com.mojang:authlib:1.5.21'
     compileOnly name: 'forge-1.12.2-mapped'
+    compileOnly name: 'worldedit-sponge-api7.1.0-6.1.10-SNAPSHOT-dist'
 }

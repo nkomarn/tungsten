@@ -1,9 +1,11 @@
 package com.firestartermc.tungsten.command;
 
 import com.firestartermc.tungsten.Tungsten;
-import com.firestartermc.tungsten.island.Island;
-import com.firestartermc.tungsten.team.TeamManager;
+import com.firestartermc.tungsten.data.SqlStatements;
+import com.firestartermc.tungsten.island.IslandBuilder;
+import com.firestartermc.tungsten.team.Team;
 import com.firestartermc.tungsten.util.ConcurrentUtils;
+import com.firestartermc.tungsten.util.Region;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandException;
@@ -16,9 +18,12 @@ import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.Optional;
-
-import static com.firestartermc.tungsten.team.TeamManager.hasTeam;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class IslandCommand implements CommandExecutor {
 
@@ -41,27 +46,64 @@ public class IslandCommand implements CommandExecutor {
         }
 
         Player player = (Player) src;
+        Optional<Team> team = Team.ofPlayer(player);
 
-        if (!hasTeam(player)) {
+        if (!team.isPresent()) {
             throw new CommandException(Text.of("You must be in a team to use this!"));
         }
 
-        Optional<Island> optional = plugin.getIslandGrid().getIsland(player);
+        plugin.getIslandGrid().getIslandByTeam(team.get()).thenAccept(island -> {
+            if (island.isPresent()) {
+                ConcurrentUtils.ensureMain(() -> player.setLocation(island.get().getSpawnLocation()));
+                return;
+            }
 
-        if (optional.isPresent()) {
-            player.setLocation(optional.get().getSpawnLocation());
-            return CommandResult.success();
-        }
+            createIsland(player, team.get());
+        }).exceptionally(e -> {
+            e.printStackTrace();
+            return null;
+        });
 
-        // Create a new island
-        plugin.getIslandGrid().createIsland(player).thenAccept(island -> {
-            ConcurrentUtils.ensureMain(() -> player.setLocation(island.getSpawnLocation()));
+        return CommandResult.success();
+    }
+
+    private void createIsland(@NotNull Player player, @NotNull Team team) {
+        CompletableFuture<Region> future = new CompletableFuture<>();
+        findEmptyRegion(future);
+
+        future.thenCompose(region -> new IslandBuilder().team(team).region(region).build()).thenAccept(island -> {
+            ConcurrentUtils.ensureMain(() -> {
+                player.setLocation(island.getSpawnLocation());
+            });
         }).exceptionally(e -> {
             e.printStackTrace();
             player.sendMessage(Text.of(TextColors.RED, "Failed to create your island; contact staff."));
             return null;
         });
+    }
 
-        return CommandResult.success();
+    private void findEmptyRegion(CompletableFuture<Region> future) {
+        int x = ThreadLocalRandom.current().nextInt(0, 30000000);
+        int z = ThreadLocalRandom.current().nextInt(0, 30000000);
+        Region region = Region.fromBlock(x, z);
+
+        ConcurrentUtils.callAsync(() -> {
+            try (Connection connection = plugin.getDataStore().getConnection()) {
+                PreparedStatement statement = connection.prepareStatement(SqlStatements.SELECT_BY_REGION);
+                statement.setInt(1, region.getX());
+                statement.setInt(2, region.getZ());
+                ResultSet result = statement.executeQuery();
+
+                if (result.next()) {
+                    findEmptyRegion(future);
+                    return;
+                }
+
+                future.complete(region);
+            }
+        }).exceptionally(e -> {
+            future.completeExceptionally(e);
+            return null;
+        });
     }
 }
