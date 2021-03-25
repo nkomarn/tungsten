@@ -4,7 +4,7 @@ import com.firestartermc.tungsten.Tungsten;
 import com.firestartermc.tungsten.data.SqlStatements;
 import com.firestartermc.tungsten.team.Team;
 import com.firestartermc.tungsten.util.ConcurrentUtils;
-import com.firestartermc.tungsten.util.Region;
+import com.firestartermc.tungsten.util.RegionPos;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.World;
@@ -17,12 +17,12 @@ import java.sql.SQLException;
 public class Island {
 
     private final Team team;
-    private final Region region;
+    private final RegionPos regionPos;
     private Location<World> spawnLocation;
 
-    public Island(@NotNull Team team, @NotNull Region region, @NotNull Location<World> spawnLocation) {
+    public Island(@NotNull Team team, @NotNull RegionPos regionPos, @NotNull Location<World> spawnLocation) {
         this.team = team;
-        this.region = region;
+        this.regionPos = regionPos;
         this.spawnLocation = spawnLocation;
     }
 
@@ -30,7 +30,7 @@ public class Island {
     public static Island fromResultSet(@NotNull ResultSet result) throws SQLException {
         return new Island(
                 new Team(result.getShort(1)),
-                new Region(result.getInt(2), result.getInt(3)),
+                new RegionPos(result.getInt(2), result.getInt(3)),
                 Tungsten.INSTANCE.getIslandWorld().getLocation(
                         result.getInt(4),
                         result.getInt(5),
@@ -45,8 +45,8 @@ public class Island {
     }
 
     @NotNull
-    public Region getRegion() {
-        return region;
+    public RegionPos getRegion() {
+        return regionPos;
     }
 
     @NotNull

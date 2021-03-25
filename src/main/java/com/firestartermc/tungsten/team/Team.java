@@ -34,12 +34,12 @@ public class Team {
     @NotNull
     public static Optional<Team> ofPlayer(@NotNull Player player) {
         return Optional.ofNullable(Universe.get().getPlayer(player.getUniqueId()))
-                .flatMap(forgePlayer -> {
+                .map(forgePlayer -> {
                     if (!forgePlayer.hasTeam()) {
-                        return Optional.empty();
+                        return null;
                     }
 
-                    return Optional.of(new Team(forgePlayer.team));
+                    return new Team(forgePlayer.team);
                 });
     }
 

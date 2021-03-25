@@ -1,18 +1,16 @@
 package com.firestartermc.tungsten.island;
 
-import com.feed_the_beast.ftblib.lib.data.ForgeTeam;
 import com.firestartermc.tungsten.Tungsten;
 import com.firestartermc.tungsten.data.SqlStatements;
 import com.firestartermc.tungsten.team.Team;
 import com.firestartermc.tungsten.util.ConcurrentUtils;
-import com.firestartermc.tungsten.util.Region;
+import com.firestartermc.tungsten.util.RegionPos;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
-import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.World;
 
 import java.sql.Connection;
@@ -24,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Represents the collection of {@link Region}s in a {@link World} which
+ * Represents the collection of {@link RegionPos}s in a {@link World} which
  * make up the skyblock world.
  *
  * @since 1.0
@@ -33,7 +31,7 @@ public class IslandGrid {
 
     private final Tungsten plugin;
     private final Map<Team, Island> islands;
-    private final Map<Region, Island> islandRegions;
+    private final Map<RegionPos, Island> islandRegions;
 
     public IslandGrid(@NotNull Tungsten plugin) {
         this.plugin = plugin;
@@ -72,28 +70,28 @@ public class IslandGrid {
     }
 
     /**
-     * Returns an island that may be located at the given region.
+     * Returns an island that may be located at the given regionPos.
      *
-     * @param region The region.
+     * @param regionPos The regionPos.
      * @return Future of an optional of an island.
      */
     @NotNull
-    public CompletableFuture<Optional<Island>> getIslandByRegion(@NotNull Region region) {
-        if (islandRegions.containsKey(region)) {
-            return CompletableFuture.completedFuture(Optional.ofNullable(islandRegions.get(region)));
+    public CompletableFuture<Optional<Island>> getIslandByRegion(@NotNull RegionPos regionPos) {
+        if (islandRegions.containsKey(regionPos)) {
+            return CompletableFuture.completedFuture(Optional.ofNullable(islandRegions.get(regionPos)));
         }
 
         return ConcurrentUtils.callAsync(() -> {
             try (Connection connection = plugin.getDataStore().getConnection()) {
                 PreparedStatement statement = connection.prepareStatement(SqlStatements.SELECT_BY_REGION);
-                statement.setInt(1, region.getX());
-                statement.setInt(2, region.getZ());
+                statement.setInt(1, regionPos.getX());
+                statement.setInt(2, regionPos.getZ());
                 ResultSet result = statement.executeQuery();
 
                 if (result.next()) {
                     Island island = Island.fromResultSet(result);
                     islands.put(island.getTeam(), island);
-                    islandRegions.put(region, island);
+                    islandRegions.put(regionPos, island);
                     return Optional.of(island);
                 }
 

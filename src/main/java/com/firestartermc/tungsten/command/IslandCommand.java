@@ -6,7 +6,7 @@ import com.firestartermc.tungsten.data.SqlStatements;
 import com.firestartermc.tungsten.island.IslandBuilder;
 import com.firestartermc.tungsten.team.Team;
 import com.firestartermc.tungsten.util.ConcurrentUtils;
-import com.firestartermc.tungsten.util.Region;
+import com.firestartermc.tungsten.util.RegionPos;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandException;
@@ -77,10 +77,10 @@ public class IslandCommand implements CommandExecutor {
     }
 
     private void createIsland(@NotNull Player player, @NotNull Team team) {
-        CompletableFuture<Region> future = new CompletableFuture<>();
+        CompletableFuture<RegionPos> future = new CompletableFuture<>();
         findEmptyRegion(future);
 
-        future.thenCompose(region -> new IslandBuilder().team(team).region(region).build()).thenAccept(island -> {
+        future.thenCompose(regionPos -> new IslandBuilder(team, regionPos).build()).thenAccept(island -> {
             ConcurrentUtils.ensureMain(() -> {
                 player.setLocation(island.getSpawnLocation());
 
@@ -100,16 +100,16 @@ public class IslandCommand implements CommandExecutor {
         });
     }
 
-    private void findEmptyRegion(CompletableFuture<Region> future) {
+    private void findEmptyRegion(CompletableFuture<RegionPos> future) {
         int x = ThreadLocalRandom.current().nextInt(0, 30000000);
         int z = ThreadLocalRandom.current().nextInt(0, 30000000);
-        Region region = Region.fromBlock(x, z);
+        RegionPos regionPos = RegionPos.fromBlock(x, z);
 
         ConcurrentUtils.callAsync(() -> {
             try (Connection connection = plugin.getDataStore().getConnection()) {
                 PreparedStatement statement = connection.prepareStatement(SqlStatements.SELECT_BY_REGION);
-                statement.setInt(1, region.getX());
-                statement.setInt(2, region.getZ());
+                statement.setInt(1, regionPos.getX());
+                statement.setInt(2, regionPos.getZ());
                 ResultSet result = statement.executeQuery();
 
                 if (result.next()) {
@@ -117,7 +117,7 @@ public class IslandCommand implements CommandExecutor {
                     return;
                 }
 
-                future.complete(region);
+                future.complete(regionPos);
             }
         }).exceptionally(e -> {
             future.completeExceptionally(e);

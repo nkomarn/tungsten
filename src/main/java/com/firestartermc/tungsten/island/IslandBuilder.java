@@ -4,7 +4,7 @@ import com.firestartermc.tungsten.Tungsten;
 import com.firestartermc.tungsten.data.SqlStatements;
 import com.firestartermc.tungsten.team.Team;
 import com.firestartermc.tungsten.util.ConcurrentUtils;
-import com.firestartermc.tungsten.util.Region;
+import com.firestartermc.tungsten.util.RegionPos;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.Vector;
 import com.sk89q.worldedit.WorldEdit;
@@ -14,7 +14,6 @@ import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.sponge.SpongeWorldEdit;
 import org.jetbrains.annotations.NotNull;
-import org.spongepowered.api.world.Chunk;
 import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.World;
 
@@ -28,23 +27,16 @@ import java.util.concurrent.CompletableFuture;
  */
 public class IslandBuilder {
 
-    private Team team;
-    private Region region;
+    private final Team team;
+    private final RegionPos regionPos;
 
-    @NotNull
-    public IslandBuilder team(@NotNull Team team) {
+    public IslandBuilder(@NotNull Team team, @NotNull RegionPos regionPos) {
         this.team = team;
-        return this;
-    }
-
-    @NotNull
-    public IslandBuilder region(@NotNull Region region) {
-        this.region = region;
-        return this;
+        this.regionPos = regionPos;
     }
 
     /**
-     * Pastes the island schematic in the given region and
+     * Pastes the island schematic in the given regionPos and
      * returns an object of the island after it has been inserted
      * into the database.
      *
@@ -52,7 +44,7 @@ public class IslandBuilder {
      */
     @NotNull
     public CompletableFuture<Island> build() {
-        Location<World> spawn = region.getCenterBlock();
+        Location<World> spawn = regionPos.getCenterBlock();
 
         // Paste on main server thread
         ConcurrentUtils.ensureMain(() -> {
@@ -71,9 +63,9 @@ public class IslandBuilder {
             }
         });
 
-        // Claim the full region automatically
-        for (int x = region.getMinChunk().getX(); x < region.getMaxChunk().getX(); x++) {
-            for (int z = region.getMinChunk().getZ(); z < region.getMaxChunk().getZ(); z++) {
+        // Claim the full regionPos automatically
+        for (int x = regionPos.getMinChunk().getX(); x < regionPos.getMaxChunk().getX(); x++) {
+            for (int z = regionPos.getMinChunk().getZ(); z < regionPos.getMaxChunk().getZ(); z++) {
                 team.claimChunk(x, z);
             }
         }
@@ -85,8 +77,8 @@ public class IslandBuilder {
             try (Connection connection = Tungsten.INSTANCE.getDataStore().getConnection()) {
                 PreparedStatement statement = connection.prepareStatement(SqlStatements.CREATE_ISLAND);
                 statement.setShort(1, team.getId());
-                statement.setInt(2, region.getX());
-                statement.setInt(3, region.getZ());
+                statement.setInt(2, regionPos.getX());
+                statement.setInt(3, regionPos.getZ());
                 statement.setInt(4, spawn.getBlockX());
                 statement.setInt(5, spawn.getBlockY());
                 statement.setInt(6, spawn.getBlockZ());
@@ -96,7 +88,7 @@ public class IslandBuilder {
                 ResultSet result = statement.executeQuery();
 
                 if (result.next()) {
-                    return new Island(team, region, spawn);
+                    return new Island(team, regionPos, spawn);
                 }
             }
 

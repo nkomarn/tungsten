@@ -9,25 +9,28 @@ import org.spongepowered.api.world.World;
 import java.util.Objects;
 
 /**
- * Represents a Minecraft region.
+ * Represents the X, Z coordinate position of a Minecraft
+ * world save region.
+ *
+ * @since 1.0
  */
-public class Region {
+public class RegionPos {
 
     private final int x;
     private final int z;
 
-    public Region(int x, int z) {
+    public RegionPos(int x, int z) {
         this.x = x;
         this.z = z;
     }
 
     @NotNull
-    public static Region fromChunk(int x, int z) {
-        return new Region(x >> 5, z >> 5);
+    public static RegionPos fromChunk(int x, int z) {
+        return new RegionPos(x >> 5, z >> 5);
     }
 
     @NotNull
-    public static Region fromBlock(int x, int z) {
+    public static RegionPos fromBlock(int x, int z) {
         return fromChunk(MathUtils.floorInt(x) / 16, MathUtils.floorInt(z) / 16);
     }
 
@@ -50,7 +53,7 @@ public class Region {
     }
 
     /**
-     * Returns the center block of this region.
+     * Returns the center block of this regionPos.
      * Okay, technically regions don't have a center block since
      * they're even. But this is a good enough approximation so
      * whatever, fuck off.
@@ -73,8 +76,8 @@ public class Region {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Region region = (Region) o;
-        return x == region.x && z == region.z;
+        RegionPos regionPos = (RegionPos) o;
+        return x == regionPos.x && z == regionPos.z;
     }
 
     @Override
