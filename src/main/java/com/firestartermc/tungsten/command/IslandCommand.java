@@ -1,6 +1,7 @@
 package com.firestartermc.tungsten.command;
 
 import com.firestartermc.tungsten.Tungsten;
+import com.firestartermc.tungsten.command.island.SetSpawnCommand;
 import com.firestartermc.tungsten.data.SqlStatements;
 import com.firestartermc.tungsten.island.IslandBuilder;
 import com.firestartermc.tungsten.team.Team;
@@ -17,6 +18,8 @@ import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
+import org.spongepowered.api.text.format.TextStyles;
+import org.spongepowered.api.text.title.Title;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -31,8 +34,14 @@ public class IslandCommand implements CommandExecutor {
 
     public IslandCommand(@NotNull Tungsten plugin) {
         this.plugin = plugin;
+
+        CommandSpec setSpawnSpec = CommandSpec.builder()
+                .executor(new SetSpawnCommand())
+                .build();
+
         CommandSpec spec = CommandSpec.builder()
                 .executor(this)
+                .child(setSpawnSpec, "setspawn")
                 .build();
 
         Sponge.getCommandManager().register(plugin, spec, "is", "island");
@@ -74,6 +83,15 @@ public class IslandCommand implements CommandExecutor {
         future.thenCompose(region -> new IslandBuilder().team(team).region(region).build()).thenAccept(island -> {
             ConcurrentUtils.ensureMain(() -> {
                 player.setLocation(island.getSpawnLocation());
+
+                Title title = Title.builder()
+                        .title(Text.builder("WELCOME HOME").style(TextStyles.BOLD).build())
+                        .subtitle(Text.of("Your new humble abode"))
+                        .build();
+
+                player.sendTitle(title);
+                // TODO some epic sound here uwu
+                player.sendMessage(Text.of(TextColors.GOLD, "Welcome to your new island! Reference your quest book for starting steps and survival tips."));
             });
         }).exceptionally(e -> {
             e.printStackTrace();

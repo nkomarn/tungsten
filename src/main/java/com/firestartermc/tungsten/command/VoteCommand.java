@@ -36,15 +36,14 @@ public class VoteCommand implements CommandExecutor {
         try {
             LiteralText message = Text.builder(" ")
                     .append(Text.NEW_LINE)
+                    .append(Text.builder(" Vote for RAK!").color(TextColors.RED).style(TextStyles.BOLD).build())
                     .append(Text.NEW_LINE)
-                    .append(Text.builder("Vote for RAK!").color(TextColors.RED).style(TextStyles.BOLD).build())
+                    .append(Text.of(" RAK is a useful currency which can be used to purchase rewards from your quest book! Each vote is 10 RAK."))
                     .append(Text.NEW_LINE)
-                    .append(Text.of("RAK is a useful currency which can be used to purchase rewards from your quest book!"))
-                    .append(Text.NEW_LINE)
-                    .append(Text.of(TextColors.YELLOW, "Click here to vote!"))
+                    .append(Text.of(TextColors.YELLOW, " Click here to vote!"))
                     .append(Text.NEW_LINE)
                     .append(Text.EMPTY)
-                    .onClick(TextActions.openUrl(new URL("exziisdumb.com")))
+                    .onClick(TextActions.openUrl(new URL("http://exziisdumb.com")))
                     .build();
 
             src.sendMessage(message);

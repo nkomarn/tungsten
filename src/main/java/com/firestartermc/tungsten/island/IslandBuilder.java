@@ -71,7 +71,12 @@ public class IslandBuilder {
             }
         });
 
-        // TODO Claim the island area as the team
+        // Claim the full region automatically
+        for (int x = region.getMinChunk().getX(); x < region.getMaxChunk().getX(); x++) {
+            for (int z = region.getMinChunk().getZ(); z < region.getMaxChunk().getZ(); z++) {
+                team.claimChunk(x, z);
+            }
+        }
 
         // TOOD send fake worldborders
 

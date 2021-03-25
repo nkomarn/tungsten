@@ -1,5 +1,6 @@
 package com.firestartermc.tungsten.data;
 
+import com.firestartermc.tungsten.util.ConcurrentUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -7,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 /**
@@ -33,6 +35,8 @@ public class SqliteStore {
         } catch (SQLException e) {
             throw new RuntimeException("Failed to create local database.", e);
         }
+
+        createTables();
     }
 
     /**
@@ -54,5 +58,18 @@ public class SqliteStore {
     @NotNull
     public Connection getConnection() throws SQLException {
         return DriverManager.getConnection("jdbc:sqlite:" + location);
+    }
+
+    private void createTables() {
+        ConcurrentUtils.callAsync(() -> {
+            try (Connection connection = getConnection()) {
+                try (PreparedStatement statement = connection.prepareStatement(SqlStatements.CREATE_TABLE)) {
+                    statement.executeUpdate();
+                }
+            }
+        }).exceptionally(e -> {
+            e.printStackTrace();
+            return null;
+        });
     }
 }

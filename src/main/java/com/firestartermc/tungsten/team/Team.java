@@ -3,6 +3,10 @@ package com.firestartermc.tungsten.team;
 import com.feed_the_beast.ftblib.lib.data.ForgePlayer;
 import com.feed_the_beast.ftblib.lib.data.ForgeTeam;
 import com.feed_the_beast.ftblib.lib.data.Universe;
+import com.feed_the_beast.ftblib.lib.math.ChunkDimPos;
+import com.feed_the_beast.ftbutilities.data.ClaimedChunk;
+import com.feed_the_beast.ftbutilities.data.ClaimedChunks;
+import com.feed_the_beast.ftbutilities.data.FTBUtilitiesTeamData;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
@@ -61,6 +65,11 @@ public class Team {
                 .map(ForgePlayer::getId)
                 .filter(uuid -> Sponge.getServer().getPlayer(uuid).isPresent())
                 .map(uuid -> Sponge.getServer().getPlayer(uuid).get());
+    }
+
+    public void claimChunk(int x, int z) {
+        ClaimedChunk chunk = new ClaimedChunk(new ChunkDimPos(x, z, 0), FTBUtilitiesTeamData.get(forgeTeam));
+        ClaimedChunks.instance.addChunk(chunk);
     }
 
     @Override

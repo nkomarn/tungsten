@@ -1,12 +1,8 @@
 package com.firestartermc.tungsten.util;
 
 import com.firestartermc.tungsten.Tungsten;
-import com.firestartermc.tungsten.util.model.Pair;
 import com.flowpowered.math.vector.Vector3i;
 import org.jetbrains.annotations.NotNull;
-import org.spongepowered.api.Sponge;
-import org.spongepowered.api.text.Text;
-import org.spongepowered.api.world.Chunk;
 import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.World;
 
@@ -63,17 +59,9 @@ public class Region {
      */
     @NotNull
     public Location<World> getCenterBlock() {
-        World world = Tungsten.INSTANCE.getIslandWorld();
-        Sponge.getServer().getBroadcastChannel().send(Text.of(getMinChunk().toString()));
-        Sponge.getServer().getBroadcastChannel().send(Text.of(getMaxChunk().toString()));
-
         int centerX = getMinChunk().getX() + 16;
         int centerZ = getMinChunk().getZ() + 16;
-
-        Sponge.getServer().getBroadcastChannel().send(Text.of(centerX + ":" + centerZ));
-        Sponge.getServer().getBroadcastChannel().send(Text.of(toString()));
-
-        return world.getLocation(centerX * 16, 86, centerZ * 16);
+        return Tungsten.INSTANCE.getIslandWorld().getLocation(centerX * 16, 86, centerZ * 16);
     }
 
     @Override

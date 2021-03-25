@@ -9,4 +9,6 @@ public class SqlStatements {
 
     public static final String SELECT_BY_ID = "SELECT * FROM islands WHERE id = ?;";
     public static final String SELECT_BY_REGION = "SELECT * FROM islands WHERE region_x = ? AND region_z = ?;";
+
+    public static final String UDPATE_SPAWN = "UPDATE islands SET spawn_x = ?, spawn_y = ?, spawn_z = ? WHERE id = ?;";
 }

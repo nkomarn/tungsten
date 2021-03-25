@@ -13,6 +13,9 @@ repositories {
     maven {
         url 'https://libraries.minecraft.net/'
     }
+    maven {
+        url 'https://dl.bintray.com/ichbinjoe/public/'
+    }
     flatDir {
         dirs 'libs'
     }
@@ -22,7 +25,9 @@ dependencies {
     compileOnly 'org.spongepowered:spongeapi:7.3.0'
     compileOnly 'org.jetbrains:annotations:20.1.0'
     compileOnly 'com.feedthebeast:FTB-Library:5.4.7.2'
+    compileOnly 'com.feedthebeast:FTB-Utilities:5.4.1.131'
     compileOnly 'com.mojang:authlib:1.5.21'
+    compileOnly "com.vexsoftware:nuvotifier-universal:2.6.0"
     compileOnly name: 'forge-1.12.2-mapped'
     compileOnly name: 'worldedit-sponge-api7.1.0-6.1.10-SNAPSHOT-dist'
 }
